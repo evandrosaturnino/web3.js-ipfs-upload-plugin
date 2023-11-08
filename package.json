@@ -22,6 +22,8 @@
     "url": "git@github.com:web3/web3.js-plugin-template.git"
   },
   "dependencies": {
+    "@babel/core": "^7.23.2",
+    "ipfs-http-client": "50.1.2"
   },
   "devDependencies": {
     "@chainsafe/eslint-config": "^2.0.0",
