@@ -76,11 +76,13 @@ export class IPFSStoragePlugin
    * @returns A promise that resolves to a TransactionReceipt once the CID is stored.
    * @throws Will throw an error if the store method is not defined in the contract or if the transaction fails.
    */
-  private async storeCIDInRegistry(cid: CID): Promise<TransactionReceipt> {
+  public async storeCIDInRegistry(cid: CID): Promise<TransactionReceipt> {
     const _contract: Contract<typeof RegistryABI> = new Contract(
       this.registryAbi,
       this.registryAddress,
     );
+
+    const defaultAccount = _contract.defaultAccount;
 
     // Adds Web3Context to Contract instance
     _contract.link(this);
@@ -91,10 +93,16 @@ export class IPFSStoragePlugin
       );
     }
 
+    if (!defaultAccount) {
+      throw new Error(
+        "The signer address hasn't been set to the Web3.js Provider instance.",
+      );
+    }
+
     try {
       const receipt: TransactionReceipt = await _contract.methods
         .store(cid.toString())
-        .call();
+        .send({ from: defaultAccount });
       console.log("Stored file CID receipt:", receipt);
 
       return receipt;

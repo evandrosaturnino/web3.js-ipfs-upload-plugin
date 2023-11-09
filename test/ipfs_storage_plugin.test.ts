@@ -5,10 +5,9 @@ import { RegistryABI } from "../src/registry_abi";
 import { REGISTRY_ADDRESS, REGISTRY_DEPLOYMENT_BLOCK } from "../src/constants";
 import { IPFSStoragePlugin } from "../src/ipfs_storage_plugin";
 
-// Mock the IPFS client and filesystem methods
 jest.mock("ipfs-http-client", () => ({
   create: jest.fn().mockImplementation(() => ({
-    add: jest.fn(), // Provide other methods if necessary
+    add: jest.fn(),
   })),
 }));
 
@@ -31,26 +30,9 @@ describe("IPFSStoragePlugin Tests", () => {
     let web3Context: Web3;
     let ipfsStoragePlugin: IPFSStoragePlugin;
 
-    beforeAll(() => {
+    beforeAll(async () => {
       web3Context = new Web3("http://127.0.0.1:8545");
 
-      ipfsStoragePlugin = new IPFSStoragePlugin({
-        ipfsApiUrl,
-        registryAbi: RegistryABI,
-        registryAddress: REGISTRY_ADDRESS,
-      });
-
-      web3Context.registerPlugin(ipfsStoragePlugin);
-    });
-
-    it("should initialize with default values", () => {
-      expect(ipfsStoragePlugin.pluginNamespace).toBeDefined();
-      expect(create).toHaveBeenCalledWith({
-        url: ipfsApiUrl,
-      });
-    });
-
-    it("should upload a file to IPFS and store the CID in the registry", async () => {
       const providers = [
         "https://endpoints.omniatech.io/v1/eth/sepolia/public",
         "https://ethereum-sepolia.publicnode.com",
@@ -58,11 +40,6 @@ describe("IPFSStoragePlugin Tests", () => {
         "https://ethereum-sepolia.blockpi.network/v1/rpc/public",
         "https://eth-sepolia-public.unifra.io",
       ];
-      const dummyFileBuffer = Buffer.from("dummy file content");
-      const dummyFilePath = "/mock/path/file.txt";
-      const dummyCid =
-        "bafybeibh5r7hnwumx2udt7q2f36xzm4sq2w4kbf7y4obqwe2nk4b7lz6mu";
-
       let providerSet = false;
 
       for (const providerUrl of providers) {
@@ -82,22 +59,52 @@ describe("IPFSStoragePlugin Tests", () => {
         );
       }
 
+      ipfsStoragePlugin = new IPFSStoragePlugin({
+        ipfsApiUrl,
+        registryAbi: RegistryABI,
+        registryAddress: REGISTRY_ADDRESS,
+      });
+
+      web3Context.registerPlugin(ipfsStoragePlugin);
+    });
+
+    it("should initialize with default values", () => {
+      expect(ipfsStoragePlugin.pluginNamespace).toBeDefined();
+      expect(create).toHaveBeenCalledWith({
+        url: ipfsApiUrl,
+      });
+    });
+
+    it("should upload a file to IPFS and store the CID in the registry", async () => {
+      const dummyFileBuffer = Buffer.from("dummy file content");
+      const dummyFilePath = "/mock/path/file.txt";
+      const dummyCid =
+        "bafybeibh5r7hnwumx2udt7q2f36xzm4sq2w4kbf7y4obqwe2nk4b7lz6mu";
+      const dummyTransactionReceipt = {
+        transactionHash:
+          "0xba1e4e45604acbdeb359bd1c893ab57aecf8bfce5402168b90da34f0eee7ba3e",
+      }; // Mock transaction receipt
+
       const readFileMock = jest.fn().mockResolvedValue(dummyFileBuffer);
       fs.promises.readFile = readFileMock;
 
       const addMock = jest.fn().mockResolvedValue({ cid: dummyCid });
       web3Context.IPFSStorage.ipfsClient.add = addMock;
 
-      if (!web3Context.provider) {
-        throw new Error(
-          "None of the providers could be set. Please check the URLs and network status.",
-        );
-      }
+      const storeCIDInRegistryMock = jest
+        .fn()
+        .mockResolvedValue(dummyTransactionReceipt);
+      web3Context.IPFSStorage.storeCIDInRegistry = storeCIDInRegistryMock;
 
-      await web3Context.IPFSStorage.uploadLocalFileToIPFS(dummyFilePath);
+      const transactionReceipt =
+        await web3Context.IPFSStorage.uploadLocalFileToIPFS(dummyFilePath);
 
       expect(readFileMock).toHaveBeenCalledWith(dummyFilePath);
       expect(addMock).toHaveBeenCalledWith(expect.any(Uint8Array));
+      expect(storeCIDInRegistryMock).toHaveBeenCalledWith(dummyCid);
+
+      // Check if the transaction receipt is the mocked one
+      expect(transactionReceipt).toEqual(dummyTransactionReceipt);
     });
 
     it("should list CIDs for a given Ethereum address", async () => {
@@ -105,9 +112,9 @@ describe("IPFSStoragePlugin Tests", () => {
       const startBlock = REGISTRY_DEPLOYMENT_BLOCK;
       const dummyCidList = ["QmdummyCid1", "QmdummyCid2"];
       const listCIDsForAddressMock = jest.fn().mockResolvedValue(dummyCidList);
-      ipfsStoragePlugin.listCIDsForAddress = listCIDsForAddressMock;
+      web3Context.IPFSStorage.listCIDsForAddress = listCIDsForAddressMock;
 
-      const cids = await ipfsStoragePlugin.listCIDsForAddress(
+      const cids = await web3Context.IPFSStorage.listCIDsForAddress(
         dummyAddress,
         startBlock,
       );
