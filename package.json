@@ -1,12 +1,12 @@
 {
   "name": "web3-ipfs-storage-plugin",
   "version": "1.0.0",
-  "description": "Template plugin to extend web3.js with additional methods",
+  "description": "Template plugin to upload files to IPFS and store the CID in Etheruem blockchain",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "homepage": "https://github.com/web3/web3.js-plugin-template#readme",
+  "homepage": "https://github.com/evandrosaturnino/web3.js-plugin",
   "bugs": {
-    "url": "https://github.com/web3/web3.js-plugin-template/issues"
+    "url": "https://github.com/evandrosaturnino/web3.js-plugin/issues"
   },
   "scripts": {
     "lint": "eslint '{src,test}/**/*.ts'",
@@ -14,7 +14,7 @@
     "test": "jest --config=./test/jest.config.js"
   },
   "contributors": [
-    "ChainSafe <info@chainsafe.io>"
+    "Evandro Saturnino <evandro.saturnino@gmail.com"
   ],
   "license": "MIT",
   "repository": {
