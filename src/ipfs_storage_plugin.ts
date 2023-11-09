@@ -1,7 +1,9 @@
 import { promises as fsPromises } from "fs";
-import type { ContractAbi, EventLog, TransactionReceipt } from "web3";
+import type { Address, ContractAbi, EventLog, TransactionReceipt } from "web3";
 import { Contract, Web3PluginBase } from "web3";
-import { CID, create } from "ipfs-http-client";
+import type { CID, EndpointConfig } from "ipfs-http-client";
+import type { IPFS } from "ipfs-core-types";
+import { create } from "ipfs-http-client";
 
 import { RegistryABI } from "./registry_abi";
 import { REGISTRY_ADDRESS, REGISTRY_DEPLOYMENT_BLOCK } from "./constants";
@@ -19,8 +21,11 @@ export class IPFSStoragePlugin
   implements IStoragePlugin
 {
   public pluginNamespace: string;
-  private readonly registryContract: Contract<typeof RegistryABI>;
-  private ipfsClient;
+  private registryAbi: ContractAbi;
+  private registryAddress: Address;
+  public ipfsClient: IPFS & {
+    getEndpointConfig: () => EndpointConfig;
+  };
 
   public constructor(
     options: {
@@ -32,22 +37,17 @@ export class IPFSStoragePlugin
   ) {
     super();
     this.pluginNamespace = options.pluginNamespace ?? "IPFSStorage";
+    this.registryAbi = options.registryAbi ?? RegistryABI;
+    this.registryAddress = options.pluginNamespace ?? REGISTRY_ADDRESS;
 
-    this.registryContract = new Contract(
-      options.registryAbi ?? RegistryABI,
-      options.registryAddress ?? REGISTRY_ADDRESS,
-    );
-
-    // Adds Web3Context to Contract instance
-    this.registryContract.link(this);
     this.ipfsClient = create({
       url: options.ipfsApiUrl || "http://localhost:5001",
     }); // Default IPFS API URL
   }
 
   /**
-   * Uploads a file from the local file system to IPFS via Helia and unixfs,
-   * and then stores the returned CID in a smart contract registry.
+   * Uploads a file from the local file system to IPFS, and stores the returned
+   * CID in a smart contract registry.
    *
    * @param localFilePath - The file URL object pointing to the local file to upload.
    * @returns A `TransactionReceipt` object that contains details of the transaction
@@ -68,23 +68,40 @@ export class IPFSStoragePlugin
     }
   }
 
+  /**
+   * Stores a CID in the smart contract registry.
+   *
+   * @param cid - The CID to be stored.
+   * @param fromAddress - The Ethereum address from which the transaction is made.
+   * @returns A promise that resolves to a TransactionReceipt once the CID is stored.
+   * @throws Will throw an error if the store method is not defined in the contract or if the transaction fails.
+   */
   private async storeCIDInRegistry(cid: CID): Promise<TransactionReceipt> {
-    if (typeof this.registryContract.methods.store === "function") {
-      try {
-        const receipt: TransactionReceipt = await this.registryContract.methods
-          .store(cid.toString())
-          .send();
-        console.log("Stored file CID receipt:", receipt);
-        return receipt;
-      } catch (error) {
-        console.error("Error storing CID:", error);
-        throw new Error("Error storing CID in the registry.");
-      }
+    const _contract: Contract<typeof RegistryABI> = new Contract(
+      this.registryAbi,
+      this.registryAddress,
+    );
+
+    // Adds Web3Context to Contract instance
+    _contract.link(this);
+
+    if (typeof _contract.methods.store !== "function") {
+      throw new Error(
+        "The store method is not defined in the registry contract.",
+      );
     }
 
-    throw new Error(
-      "The store method is not defined in the registry contract.",
-    );
+    try {
+      const receipt: TransactionReceipt = await _contract.methods
+        .store(cid.toString())
+        .call();
+      console.log("Stored file CID receipt:", receipt);
+
+      return receipt;
+    } catch (error) {
+      console.error("Error storing CID:", error);
+      throw new Error("Error storing CID in the registry.");
+    }
   }
 
   /**
@@ -102,13 +119,23 @@ export class IPFSStoragePlugin
     ethereumAddress: string,
     startBlock: number = REGISTRY_DEPLOYMENT_BLOCK,
   ): Promise<void> {
+    const _contract: Contract<typeof RegistryABI> = new Contract(
+      this.registryAbi,
+      this.registryAddress,
+    );
+
+    // Adds Web3Context to Contract instance
+    _contract.link(this);
+
     try {
-      const events: (string | EventLog)[] =
-        await this.registryContract.getPastEvents("CIDStored", {
+      const events: (string | EventLog)[] = await _contract.getPastEvents(
+        "CIDStored",
+        {
           filter: { owner: ethereumAddress },
           fromBlock: startBlock,
           toBlock: "latest",
-        });
+        },
+      );
 
       if (events.length === 0) {
         console.log(`No CIDs found for address ${ethereumAddress}.`);
