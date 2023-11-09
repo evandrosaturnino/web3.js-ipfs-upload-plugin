@@ -8,7 +8,7 @@ import { RegistryABI } from "./registry_abi";
 import { REGISTRY_ADDRESS, REGISTRY_DEPLOYMENT_BLOCK } from "./constants";
 
 export interface IStoragePlugin {
-  uploadLocalFileToIPFS(file: Blob): Promise<TransactionReceipt>;
+  uploadLocalFileToIPFS(file: Buffer | string): Promise<TransactionReceipt>;
   listCIDsForAddress(
     ethereumAddress: string,
     startBlock?: number,
@@ -52,7 +52,9 @@ export class IPFSStoragePlugin
    * @returns A `TransactionReceipt` object that contains details of the transaction
    *          used to store the CID in the registry.
    */
-  public async uploadLocalFileToIPFS(file: Blob): Promise<TransactionReceipt> {
+  public async uploadLocalFileToIPFS(
+    file: Buffer | string,
+  ): Promise<TransactionReceipt> {
     try {
       const addedFile = await this.ipfsClient.add(file);
       console.log("Added file CID:", addedFile.cid.toString());

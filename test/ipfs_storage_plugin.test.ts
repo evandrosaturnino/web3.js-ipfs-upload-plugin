@@ -76,7 +76,6 @@ describe("IPFSStoragePlugin Tests", () => {
 
     it("should upload a file to IPFS and store the CID in the registry", async () => {
       const dummyFileContent = "This is a dummy file content";
-      const dummyFile = new Blob([dummyFileContent], { type: "text/plain" });
       const dummyCid =
         "bafybeibh5r7hnwumx2udt7q2f36xzm4sq2w4kbf7y4obqwe2nk4b7lz6mu";
       const dummyTransactionReceipt = {
@@ -93,9 +92,9 @@ describe("IPFSStoragePlugin Tests", () => {
       web3Context.IPFSStorage.storeCIDInRegistry = storeCIDInRegistryMock;
 
       const transactionReceipt =
-        await web3Context.IPFSStorage.uploadLocalFileToIPFS(dummyFile);
+        await web3Context.IPFSStorage.uploadLocalFileToIPFS(dummyFileContent);
 
-      expect(addMock).toHaveBeenCalledWith(expect.any(Blob));
+      expect(addMock).toHaveBeenCalledWith(dummyFileContent);
       expect(storeCIDInRegistryMock).toHaveBeenCalledWith(dummyCid);
 
       // Check if the transaction receipt is the mocked one
