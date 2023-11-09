@@ -14,7 +14,7 @@ This is a [web3.js](https://github.com/web3/web3.js) `4.x` plugin for storing fi
 ## Installation
 
 ```bash
-yarn add https://github.com/evandrosaturnino/web3.js-plugin.git
+yarn add web3-ipfs-storage-plugin
 ```
 
 ## Using this plugin
