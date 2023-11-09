@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import { create } from "ipfs-http-client";
 import Web3, { Web3Eth, core } from "web3";
 import { RegistryABI } from "../src/registry_abi";
@@ -76,17 +75,14 @@ describe("IPFSStoragePlugin Tests", () => {
     });
 
     it("should upload a file to IPFS and store the CID in the registry", async () => {
-      const dummyFileBuffer = Buffer.from("dummy file content");
-      const dummyFilePath = "/mock/path/file.txt";
+      const dummyFileContent = "This is a dummy file content";
+      const dummyFile = new Blob([dummyFileContent], { type: "text/plain" });
       const dummyCid =
         "bafybeibh5r7hnwumx2udt7q2f36xzm4sq2w4kbf7y4obqwe2nk4b7lz6mu";
       const dummyTransactionReceipt = {
         transactionHash:
           "0xba1e4e45604acbdeb359bd1c893ab57aecf8bfce5402168b90da34f0eee7ba3e",
       }; // Mock transaction receipt
-
-      const readFileMock = jest.fn().mockResolvedValue(dummyFileBuffer);
-      fs.promises.readFile = readFileMock;
 
       const addMock = jest.fn().mockResolvedValue({ cid: dummyCid });
       web3Context.IPFSStorage.ipfsClient.add = addMock;
@@ -97,10 +93,9 @@ describe("IPFSStoragePlugin Tests", () => {
       web3Context.IPFSStorage.storeCIDInRegistry = storeCIDInRegistryMock;
 
       const transactionReceipt =
-        await web3Context.IPFSStorage.uploadLocalFileToIPFS(dummyFilePath);
+        await web3Context.IPFSStorage.uploadLocalFileToIPFS(dummyFile);
 
-      expect(readFileMock).toHaveBeenCalledWith(dummyFilePath);
-      expect(addMock).toHaveBeenCalledWith(expect.any(Uint8Array));
+      expect(addMock).toHaveBeenCalledWith(expect.any(Blob));
       expect(storeCIDInRegistryMock).toHaveBeenCalledWith(dummyCid);
 
       // Check if the transaction receipt is the mocked one
