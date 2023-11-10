@@ -1,6 +1,6 @@
 {
   "name": "web3-ipfs-storage-plugin",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Template plugin to upload files to IPFS and store the CID in Etheruem blockchain",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
