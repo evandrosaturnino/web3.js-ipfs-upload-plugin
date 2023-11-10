@@ -94,8 +94,6 @@ export class IPFSStoragePlugin
       this.registryAddress,
     );
 
-    const defaultAccount = _contract.defaultAccount;
-
     // Adds Web3Context to Contract instance
     _contract.link(this);
 
@@ -105,16 +103,10 @@ export class IPFSStoragePlugin
       );
     }
 
-    if (!defaultAccount) {
-      throw new Error(
-        "The signer address hasn't been set to the Web3.js Provider instance.",
-      );
-    }
-
     try {
       const receipt: TransactionReceipt = await _contract.methods
         .store(cid.toString())
-        .send({ from: defaultAccount });
+        .send();
       console.log("Stored file CID receipt:", receipt);
 
       return receipt;
