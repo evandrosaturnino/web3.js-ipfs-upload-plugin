@@ -4,6 +4,8 @@ import { RegistryABI } from "../src/registry_abi";
 import { REGISTRY_ADDRESS, REGISTRY_DEPLOYMENT_BLOCK } from "../src/constants";
 import { IPFSStoragePlugin } from "../src/ipfs_storage_plugin";
 
+const ipfsApiUrl = "localhost";
+
 jest.mock("ipfs-http-client", () => ({
   create: jest.fn().mockImplementation(() => ({
     add: jest.fn(),
@@ -13,19 +15,17 @@ jest.mock("ipfs-http-client", () => ({
 describe("IPFSStoragePlugin Tests", () => {
   it("should register IPFSStorage plugin on Web3Context instance", () => {
     const web3Context = new core.Web3Context("http://127.0.0.1:8545");
-    web3Context.registerPlugin(new IPFSStoragePlugin());
+    web3Context.registerPlugin(new IPFSStoragePlugin({ ipfsApiUrl }));
     expect(web3Context.IPFSStorage).toBeDefined();
   });
 
   it("should register IPFSStorage plugin on Web3Eth instance", () => {
     const web3Eth = new Web3Eth("http://127.0.0.1:8545");
-    web3Eth.registerPlugin(new IPFSStoragePlugin());
+    web3Eth.registerPlugin(new IPFSStoragePlugin({ ipfsApiUrl }));
     expect(web3Eth.IPFSStorage).toBeDefined();
   });
 
   describe("IPFSStorage method tests", () => {
-    const ipfsApiUrl = "http://localhost:5001";
-
     let web3Context: Web3;
     let ipfsStoragePlugin: IPFSStoragePlugin;
 
@@ -70,7 +70,12 @@ describe("IPFSStoragePlugin Tests", () => {
     it("should initialize with default values", () => {
       expect(ipfsStoragePlugin.pluginNamespace).toBeDefined();
       expect(create).toHaveBeenCalledWith({
-        url: ipfsApiUrl,
+        host: ipfsApiUrl,
+        port: 5001,
+        protocol: "https",
+        headers: {
+          authorization: "",
+        },
       });
     });
 

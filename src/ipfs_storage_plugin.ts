@@ -20,28 +20,40 @@ export class IPFSStoragePlugin
   implements IStoragePlugin
 {
   public pluginNamespace: string;
+  private ipfsApiUrl: string;
   private registryAbi: ContractAbi;
   private registryAddress: Address;
+  private ipfsAuth: string;
   public ipfsClient: IPFS & {
     getEndpointConfig: () => EndpointConfig;
   };
 
   public constructor(
     options: {
+      ipfsApiUrl: string;
       pluginNamespace?: string;
       registryAbi?: ContractAbi;
       registryAddress?: string;
-      ipfsApiUrl?: string;
-    } = {},
+      ipfsAuth?: string;
+    } = {
+      ipfsApiUrl: "",
+    },
   ) {
     super();
     this.pluginNamespace = options.pluginNamespace ?? "IPFSStorage";
     this.registryAbi = options.registryAbi ?? RegistryABI;
     this.registryAddress = options.pluginNamespace ?? REGISTRY_ADDRESS;
+    this.ipfsAuth = options.ipfsAuth ?? "";
+    this.ipfsApiUrl = options.ipfsApiUrl;
 
     this.ipfsClient = create({
-      url: options.ipfsApiUrl || "http://localhost:5001",
-    }); // Default IPFS API URL
+      host: this.ipfsApiUrl,
+      port: 5001,
+      protocol: "https",
+      headers: {
+        authorization: this.ipfsAuth,
+      },
+    });
   }
 
   /**
