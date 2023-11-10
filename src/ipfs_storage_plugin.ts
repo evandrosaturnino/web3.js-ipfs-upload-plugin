@@ -97,16 +97,24 @@ export class IPFSStoragePlugin
     // Adds Web3Context to Contract instance
     _contract.link(this);
 
+    const defaultAccount = _contract.defaultAccount;
+
     if (typeof _contract.methods.store !== "function") {
       throw new Error(
         "The store method is not defined in the registry contract.",
       );
     }
 
+    if (!defaultAccount) {
+      throw new Error(
+        "The signer address hasn't been set to the Web3.js Provider instance.",
+      );
+    }
+
     try {
       const receipt: TransactionReceipt = await _contract.methods
         .store(cid.toString())
-        .send();
+        .send({ from: defaultAccount });
       console.log("Stored file CID receipt:", receipt);
 
       return receipt;
