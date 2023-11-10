@@ -78,7 +78,7 @@ const IPFSStoragePlugin = new IPFSStoragePlugin();
 
 web3.registerPlugin(IPFSStoragePlugin);
 
-web3.IPFSStoragePlugin.uploadLocalFileToIPFS(localFilePath)
+web3.IPFSStoragePlugin.uploadLocalFileToIPFS(file)
 ```
 
 #### `listCIDsForAddress`
