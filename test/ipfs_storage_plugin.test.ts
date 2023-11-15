@@ -1,134 +1,113 @@
-import * as fs from "fs";
-import { create } from "ipfs-http-client";
-import Web3, { Web3Eth, core } from "web3";
-import { RegistryABI } from "../src/registry_abi";
-import { REGISTRY_ADDRESS, REGISTRY_DEPLOYMENT_BLOCK } from "../src/constants";
+import { expect as chaiExpect } from "chai";
+import type { EventLog, TransactionReceipt } from "web3";
+import Web3, { Web3Eth, Web3Context } from "web3";
+
 import { IPFSStoragePlugin } from "../src/ipfs_storage_plugin";
+import "dotenv/config";
 
-const ipfsApiUrl = "localhost";
+const providerUrl = process.env.PROVIDER_URL;
+const privateKey = process.env.PRIVATE_KEY;
+const ipfsApiUrl = process.env.IPFS_API_URL;
+const ipfsProjectId = process.env.IPFS_PROJECT_ID;
+const ipfsSecretKey = process.env.IPFS_API_SECRET_KEY;
 
-jest.mock("ipfs-http-client", () => ({
-  create: jest.fn().mockImplementation(() => ({
-    add: jest.fn(),
-  })),
-}));
+const ipfsAuth =
+  "Basic " +
+  Buffer.from(`${ipfsProjectId}:${ipfsSecretKey}`).toString("base64");
 
-describe("IPFSStoragePlugin Tests", () => {
-  it("should register IPFSStorage plugin on Web3Context instance", () => {
-    const web3Context = new core.Web3Context("http://127.0.0.1:8545");
-    web3Context.registerPlugin(new IPFSStoragePlugin({ ipfsApiUrl }));
+const localFilePath = "./mock/mockfile.txt";
+
+describe("IPFSStoragePlugin e2e Tests", () => {
+  it("should register IPFSStoragePlugin plugin on Web3Context instance", () => {
+    const web3Context = new Web3Context("http://127.0.0.1:8545");
+    const ipfsStoragePlugin = new IPFSStoragePlugin({
+      ipfsApiUrl: ipfsApiUrl as string,
+      ipfsAuth,
+    });
+    web3Context.registerPlugin(ipfsStoragePlugin);
     expect(web3Context.IPFSStorage).toBeDefined();
   });
 
-  it("should register IPFSStorage plugin on Web3Eth instance", () => {
+  it("should register IPFSStoragePlugin plugin on Web3Eth instance", () => {
     const web3Eth = new Web3Eth("http://127.0.0.1:8545");
-    web3Eth.registerPlugin(new IPFSStoragePlugin({ ipfsApiUrl }));
+    const ipfsStoragePlugin = new IPFSStoragePlugin({
+      ipfsApiUrl: ipfsApiUrl as string,
+      ipfsAuth,
+    });
+    web3Eth.registerPlugin(ipfsStoragePlugin);
     expect(web3Eth.IPFSStorage).toBeDefined();
   });
 
-  describe("IPFSStorage method tests", () => {
-    let web3Context: Web3;
+  describe("IPFSStoragePlugin method tests", () => {
+    let web3: Web3;
     let ipfsStoragePlugin: IPFSStoragePlugin;
+    let requestManagerSendSpy: jest.SpyInstance;
 
-    beforeAll(async () => {
-      web3Context = new Web3("http://127.0.0.1:8545");
-
-      const providers = [
-        "https://endpoints.omniatech.io/v1/eth/sepolia/public",
-        "https://ethereum-sepolia.publicnode.com",
-        "https://1rpc.io/sepolia",
-        "https://ethereum-sepolia.blockpi.network/v1/rpc/public",
-        "https://eth-sepolia-public.unifra.io",
-      ];
-      let providerSet = false;
-
-      for (const providerUrl of providers) {
-        try {
-          web3Context.setProvider(providerUrl);
-          await web3Context.eth.net.isListening(); // This will throw if the provider isn't connected
-          providerSet = true;
-          break;
-        } catch (error) {
-          console.error(`Error setting provider: ${JSON.stringify(error)}`);
-        }
-      }
-
-      if (!providerSet) {
+    beforeAll(() => {
+      if (!providerUrl || !privateKey) {
         throw new Error(
-          "None of the providers could be set. Please check the URLs and network status.",
+          "Provider URL and Private Key must be set in the .env file",
         );
       }
+      web3 = new Web3(new Web3.providers.HttpProvider(providerUrl));
+
+      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+      web3.eth.accounts.wallet.add(account);
+      web3.eth.defaultAccount = account.address;
 
       ipfsStoragePlugin = new IPFSStoragePlugin({
-        ipfsApiUrl,
-        registryAbi: RegistryABI,
-        registryAddress: REGISTRY_ADDRESS,
+        ipfsApiUrl: ipfsApiUrl as string,
+        ipfsAuth,
       });
 
-      web3Context.registerPlugin(ipfsStoragePlugin);
-    });
-
-    it("should initialize with default values", () => {
-      expect(ipfsStoragePlugin.pluginNamespace).toBeDefined();
-      expect(create).toHaveBeenCalledWith({
-        host: ipfsApiUrl,
-        port: 5001,
-        protocol: "https",
-        headers: {
-          authorization: "",
-        },
-      });
+      web3.eth.registerPlugin(ipfsStoragePlugin);
+      requestManagerSendSpy = jest.spyOn(
+        web3.eth.IPFSStorage.requestManager,
+        "send",
+      );
     });
 
     it("should upload a file to IPFS and store the CID in the registry", async () => {
-      const dummyFileBuffer = Buffer.from("dummy file content");
-      const dummyFilePath = "/mock/path/file.txt";
-      const dummyCid =
-        "bafybeibh5r7hnwumx2udt7q2f36xzm4sq2w4kbf7y4obqwe2nk4b7lz6mu";
-      const dummyTransactionReceipt = {
-        transactionHash:
-          "0xba1e4e45604acbdeb359bd1c893ab57aecf8bfce5402168b90da34f0eee7ba3e",
-      }; // Mock transaction receipt
+      const transactionReceipt: TransactionReceipt =
+        await web3.eth.IPFSStorage.uploadLocalFileToIPFS(localFilePath);
 
-      const readFileMock = jest.fn().mockResolvedValue(dummyFileBuffer);
-      fs.promises.readFile = readFileMock;
+      chaiExpect(transactionReceipt).to.have.property("status", 1n);
+      const cidEvent = Object.values(transactionReceipt.events!).find(
+        (event: EventLog) => event.event === "CIDStored",
+      );
+      const cid: unknown = cidEvent?.returnValues?.cid;
 
-      const addMock = jest.fn().mockResolvedValue({ cid: dummyCid });
-      web3Context.IPFSStorage.ipfsClient.add = addMock;
+      chaiExpect(cid).to.be.a("string").that.is.not.empty;
 
-      const storeCIDInRegistryMock = jest
-        .fn()
-        .mockResolvedValue(dummyTransactionReceipt);
-      web3Context.IPFSStorage.storeCIDInRegistry = storeCIDInRegistryMock;
+      const expectedArguments = [
+        {
+          method: "eth_getBlockByNumber",
+          params: ["latest", false],
+        },
+        {
+          method: "eth_getTransactionCount",
+          params: [web3.eth.defaultAccount, "latest"],
+        },
+        {
+          method: "eth_chainId",
+          params: [],
+        },
+      ];
 
-      const transactionReceipt =
-        await web3Context.IPFSStorage.uploadLocalFileToIPFS(dummyFilePath);
-
-      expect(readFileMock).toHaveBeenCalledWith(dummyFilePath);
-      expect(addMock).toHaveBeenCalledWith(expect.any(Uint8Array));
-      expect(storeCIDInRegistryMock).toHaveBeenCalledWith(dummyCid);
-
-      // Check if the transaction receipt is the mocked one
-      expect(transactionReceipt).toEqual(dummyTransactionReceipt);
-    });
+      expectedArguments.forEach((arg, index) =>
+        expect(requestManagerSendSpy).toHaveBeenNthCalledWith(index + 1, arg),
+      );
+    }, 40000);
 
     it("should list CIDs for a given Ethereum address", async () => {
-      const dummyAddress = REGISTRY_ADDRESS;
-      const startBlock = REGISTRY_DEPLOYMENT_BLOCK;
-      const dummyCidList = ["QmdummyCid1", "QmdummyCid2"];
-      const listCIDsForAddressMock = jest.fn().mockResolvedValue(dummyCidList);
-      web3Context.IPFSStorage.listCIDsForAddress = listCIDsForAddressMock;
+      const accountAddress = web3.eth.defaultAccount;
+      const consoleLogSpy = jest.spyOn(console, "log");
+      await ipfsStoragePlugin.listCIDsForAddress(accountAddress!);
 
-      const cids = await web3Context.IPFSStorage.listCIDsForAddress(
-        dummyAddress,
-        startBlock,
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("CIDs stored by address"),
       );
-
-      expect(listCIDsForAddressMock).toHaveBeenCalledWith(
-        dummyAddress,
-        startBlock,
-      );
-      expect(cids).toEqual(dummyCidList);
-    });
+      consoleLogSpy.mockRestore();
+    }, 40000);
   });
 });

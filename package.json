@@ -23,12 +23,15 @@
   },
   "dependencies": {
     "@babel/core": "^7.23.2",
+    "dotenv": "^16.3.1",
     "ipfs-http-client": "50.1.2"
   },
   "devDependencies": {
     "@chainsafe/eslint-config": "^2.0.0",
+    "@types/chai": "^4.3.10",
     "@types/jest": "^29.5.2",
     "@types/node": "^20.2.6",
+    "chai": "^4.3.10",
     "eslint": "8",
     "jest": "^29.5.0",
     "jest-extended": "^4.0.0",
