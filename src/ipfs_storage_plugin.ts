@@ -9,7 +9,7 @@ import { REGISTRY_ADDRESS, REGISTRY_DEPLOYMENT_BLOCK } from "./constants";
 
 export interface IStoragePlugin {
   uploadLocalFileToIPFS(
-    localFilePath: Buffer | Blob | string,
+    file: Buffer | Blob | string,
   ): Promise<TransactionReceipt>;
   listCIDsForAddress(
     ethereumAddress: string,
