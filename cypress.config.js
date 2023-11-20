@@ -9,7 +9,7 @@ const config = {
 		},
 		specPattern: 'test/**/**/*.test.ts',
 		excludeSpecPattern: ['test/black_box/**'],
-	},
+	}
 };
 
 module.exports = config;

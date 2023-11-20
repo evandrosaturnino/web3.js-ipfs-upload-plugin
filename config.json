@@ -1,0 +1,7 @@
+{
+  "ipfsApiUrl": "ipfs.infura.io",
+  "providerUrl": "PROVIDER-URL",
+  "privateKey": "WALLET-PRIVATE-KEY",
+  "ipfsProjectId": "INFURA-IPFS-PROJECT-ID",
+  "ipfsSecretKey": "INFURA-IPFS-SECRET-KEY"
+}

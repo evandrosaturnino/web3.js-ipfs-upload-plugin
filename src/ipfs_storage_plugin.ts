@@ -1,4 +1,3 @@
-import { promises as fsPromises } from "fs";
 import type { Address, ContractAbi, EventLog, TransactionReceipt } from "web3";
 import { Contract, Web3PluginBase } from "web3";
 import type { CID, EndpointConfig } from "ipfs-http-client";
@@ -9,7 +8,9 @@ import { RegistryABI } from "./registry_abi";
 import { REGISTRY_ADDRESS, REGISTRY_DEPLOYMENT_BLOCK } from "./constants";
 
 export interface IStoragePlugin {
-  uploadLocalFileToIPFS(localFilePath: string): Promise<TransactionReceipt>;
+  uploadLocalFileToIPFS(
+    localFilePath: Buffer | Blob | string,
+  ): Promise<TransactionReceipt>;
   listCIDsForAddress(
     ethereumAddress: string,
     startBlock?: number,
@@ -58,19 +59,18 @@ export class IPFSStoragePlugin
   }
 
   /**
-   * Uploads a file from the local file system to IPFS, and stores the returned
+   * Uploads a file from to IPFS, and stores the returned
    * CID in a smart contract registry.
    *
-   * @param localFilePath - The file URL object pointing to the local file to upload.
+   * @param file - The file to upload.
    * @returns A `TransactionReceipt` object that contains details of the transaction
    *          used to store the CID in the registry.
    */
   public async uploadLocalFileToIPFS(
-    localFilePath: string,
+    file: Buffer | Blob | string,
   ): Promise<TransactionReceipt> {
     try {
-      const fileBuffer = await fsPromises.readFile(localFilePath);
-      const addedFile = await this.ipfsClient.add(fileBuffer);
+      const addedFile = await this.ipfsClient.add(file);
       console.log("Added file CID:", addedFile.cid.toString());
 
       return await this.storeCIDInRegistry(addedFile.cid);

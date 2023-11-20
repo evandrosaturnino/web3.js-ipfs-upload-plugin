@@ -20,7 +20,7 @@
 		"strictNullChecks": true,
 		"outDir": "lib",
 		"esModuleInterop": true,
-    "types": ["jest"],
+    "types": ["jest", "cypress"],
 	},
 	"include": ["src", "test"],
 	"exclude": ["node_modules"]
