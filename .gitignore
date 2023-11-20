@@ -3,6 +3,7 @@
 *.swp
 *.orig
 .env
+config.json
 
 # Logs
 logs
