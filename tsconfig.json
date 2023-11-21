@@ -18,10 +18,10 @@
 		"skipLibCheck": true,
 		"strict": true,
 		"strictNullChecks": true,
-		"outDir": "lib",
+		"outDir": "dist",
 		"esModuleInterop": true,
     "types": ["jest", "cypress"],
 	},
-	"include": ["src", "test"],
-	"exclude": ["node_modules"]
+	"include": ["src/**/*", "test"],
+	"exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
